@@ -2,22 +2,23 @@ const canvas = document.querySelector('canvas')
 
 c = canvas.getContext('2d')
 
+// via https://colorbrewer2.org/#type=sequential&scheme=YlOrBr&n=9
 const COLOURS = {
   0: 'lightgrey',
-  2: 'turquoise',
-  4: 'brown',
-  8: 'magenta',
-  16: 'yellow',
-  32: 'cyan',
-  64: 'green',
-  128: 'orange',
-  256: 'lime',
-  512: 'navy',
-  1024: 'pink',
-  2048: 'red'
+  2: '#ffffe5',
+  4: '#fff7bc',
+  8: '#fee391',
+  16: '#fec44f',
+  32: '#fe9929',
+  64: '#ec7014',
+  128: '#cc4c02',
+  256: '#993404',
+  512: '#662506',
+  1024: '#401703',
+  2048: 'white'
 }
 
-function randomChoice(arr) {
+const randomChoice = (arr) => {
   return arr[Math.floor(arr.length * Math.random())];
 }
 
@@ -67,7 +68,8 @@ class Game2048 {
     })
 
     if (possibleLocations.length === 0) {
-      // deal with game over
+      alert("Game over!")
+      window.addEventListener('keydown', keyboardEvents, false)
       return
     }
 
@@ -83,6 +85,7 @@ class Game2048 {
     c.fillStyle = 'black'
     c.fillRect(0, 0, canvas.width, canvas.height)
     this.addNewNumber()
+    window.addEventListener('keydown', keyboardEvents, true)
   }
 
   draw = () => {
@@ -113,8 +116,43 @@ class Game2048 {
     })
   }
 
-  merge = (arr) => {
-    return arr
+  static mergeRight = (arr) => {
+    if (arr.length === 1) {
+      // nothing to merge
+      return arr
+    }
+
+    let mergedNonZeroValues = []
+    let mergedPreviousPair = false
+    arr.forEach((value, index) => {
+      if (index === arr.length - 1) {
+        if (!mergedPreviousPair) { mergedNonZeroValues.push(value) }
+        return
+      }
+
+      // compare with next value
+      const possibleMerge = value === arr[index + 1]
+      if (possibleMerge && !mergedPreviousPair) {
+        mergedNonZeroValues.push(value * 2)
+        mergedPreviousPair = true
+      } else if (mergedPreviousPair) {
+        mergedPreviousPair = false
+      } else {
+        mergedNonZeroValues.push(value)
+        mergedPreviousPair = false
+      }
+    })
+
+    // prepend with 0s where we merged values, then supply the merged values
+    let output = Array(arr.length - mergedNonZeroValues.length).fill(0)
+    output.push(...mergedNonZeroValues)
+    return output
+  }
+
+  static mergeLeft = (arr) => {
+    // merging towards the left is the same as reversing the input,
+    // merging right and then reversing the output
+    return this.mergeRight(arr.reverse()).reverse()
   }
 
   shiftRight = () => {
@@ -126,7 +164,7 @@ class Game2048 {
 
       let numZeros = this.numColumns - nonZeroValues.length
       gameState[rowIndex] = Array(numZeros).fill(0)
-      gameState[rowIndex].push(...this.merge(nonZeroValues))
+      gameState[rowIndex].push(...this.constructor.mergeRight(nonZeroValues))
     })
     this.gameState = gameState
   }
@@ -139,7 +177,7 @@ class Game2048 {
       if (nonZeroValues.length === 0) { return }
 
       let numZeros = this.numColumns - nonZeroValues.length
-      gameState[rowIndex] = this.merge(nonZeroValues)
+      gameState[rowIndex] = this.constructor.mergeLeft(nonZeroValues)
       gameState[rowIndex].push(...Array(numZeros).fill(0))
     })
     this.gameState = gameState
@@ -155,7 +193,7 @@ class Game2048 {
       let numZeros = this.numRows - nonZeroValues.length
 
       let columnValues = Array(numZeros).fill(0)
-      columnValues.push(...this.merge(nonZeroValues))
+      columnValues.push(...this.constructor.mergeRight(nonZeroValues))
 
       this.rowIndexes.forEach(rowIndex => {
         gameState[rowIndex][columnIndex] = columnValues[rowIndex]
@@ -173,7 +211,7 @@ class Game2048 {
 
       let numZeros = this.numRows - nonZeroValues.length
 
-      let columnValues = this.merge(nonZeroValues)
+      let columnValues = this.constructor.mergeLeft(nonZeroValues)
       columnValues.push(...Array(numZeros).fill(0))
 
       this.rowIndexes.forEach(rowIndex => {
@@ -182,15 +220,35 @@ class Game2048 {
     })
     this.gameState = gameState
   }
-
-
 }
 
-const game = new Game2048({ numRows: 4, numColumns: 4, gap: 10, boxSize: 100 })
-game.draw()
 
+const arrayEquals = (a, b) => {
+  return a.every((val, index) => val === b[index])
+}
 
-window.addEventListener('keydown', (event) => {
+const testCasesForMerging = [
+  arrayEquals(Game2048.mergeLeft([2]), [2]),
+  arrayEquals(Game2048.mergeRight([4]), [4]),
+  arrayEquals(Game2048.mergeLeft([2, 2]), [4, 0]),
+  arrayEquals(Game2048.mergeRight([2, 2]), [0, 4]),
+  arrayEquals(Game2048.mergeLeft([2, 2, 8]), [4, 8, 0]),
+  arrayEquals(Game2048.mergeRight([2, 2, 8]), [0, 4, 8]),
+  arrayEquals(Game2048.mergeRight([2, 2, 4, 8]), [0, 4, 4, 8]),
+  arrayEquals(Game2048.mergeLeft([2, 2, 4, 8]), [4, 4, 8, 0])
+]
+if (!testCasesForMerging.every(v => v)) {
+  throw new Error("Failing test cases")
+}
+
+var game
+
+const newGame = () => {
+  game = new Game2048({ numRows: 4, numColumns: 4, gap: 10, boxSize: 100 })
+  game.draw()
+}
+
+const keyboardEvents = (event) => {
   switch (event.key) {
     case 'ArrowRight':
       game.shiftRight()
@@ -207,4 +265,8 @@ window.addEventListener('keydown', (event) => {
   }
   game.addNewNumber()
   game.draw()
-})
+}
+
+newGame()
+
+

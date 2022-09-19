@@ -1,0 +1,11 @@
+#new-game-btn {
+    background-color: #4c6daf;
+    margin: 10px;
+    padding: 10px;
+    border: none;
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+}
