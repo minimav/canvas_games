@@ -51,41 +51,75 @@ class Game2048 {
 
   isFinished = () => {
     return (
-      this.columnIndexes.map(columnIndex => this.column(columnIndex))
-        .map(column => column.some(v => v === 2048))
+      this.columnIndexes.some(
+        columnIndex => this.column(columnIndex).some(v => v === 2048)
+      )
     )
   }
 
-  addNewNumber = () => {
-    let possibleLocations = []
+  openSpaces = () => {
+    let spaces = []
     this.rowIndexes.forEach(rowIndex => {
       this.columnIndexes.forEach(columnIndex => {
         const number = this.gameState[rowIndex][columnIndex]
         if (number === 0) {
-          possibleLocations.push({ rowIndex, columnIndex })
+          spaces.push({ rowIndex, columnIndex })
         }
       })
     })
+    return spaces
+  }
 
-    if (possibleLocations.length === 0) {
-      alert("Game over!")
-      window.addEventListener('keydown', keyboardEvents, false)
-      return
-    }
+  checkForGameOver = () => {
+    // any there any open spaces?
+    let openSpacesExist = this.openSpaces().length > 0
+    if (openSpacesExist) { return false }
 
+    // are there any possible merges?
+    let arraysToCheck = []
+    this.rowIndexes.forEach(rowIndex => {
+      arraysToCheck.push(this.row(rowIndex))
+    })
+    this.columnIndexes.forEach(columnIndex => {
+      arraysToCheck.push(this.column(columnIndex))
+    })
+
+    let mergesExist = false;
+    arraysToCheck.forEach(arr => {
+      if (mergesExist) { return }
+      arr.forEach((value, index) => {
+        if (mergesExist || (index == arr.length - 1)) {
+          return
+        } else if (value === arr[index + 1]) {
+          mergesExist = true
+        }
+      })
+    })
+    return !mergesExist
+  }
+
+  informPlayer = (message) => {
+    document.getElementById("status").innerHTML = message
+    window.removeEventListener('keydown', keyboardEvents)
+  }
+
+  addNewNumber = () => {
+    const possibleLocations = this.openSpaces()
+    if (possibleLocations.length === 0) { return }
     const location = randomChoice(possibleLocations)
     this.justAdded = location
     this.gameState[location.rowIndex][location.columnIndex] = 2
   }
 
   initialise = () => {
+    document.getElementById("status").innerHTML = ""
     canvas.height = this.boxSize * this.numRows + (this.numRows + 1) * this.gap
     canvas.width = this.boxSize * this.numColumns + (this.numColumns + 1) * this.gap
 
     c.fillStyle = 'black'
     c.fillRect(0, 0, canvas.width, canvas.height)
     this.addNewNumber()
-    window.addEventListener('keydown', keyboardEvents, true)
+    window.addEventListener('keydown', keyboardEvents)
   }
 
   draw = () => {
@@ -220,8 +254,20 @@ class Game2048 {
     })
     this.gameState = gameState
   }
-}
 
+  update = () => {
+    if (this.isFinished()) {
+      this.draw()
+      this.informPlayer("You won!")
+      return
+    }
+    this.addNewNumber()
+    this.draw()
+    if (this.checkForGameOver()) {
+      this.informPlayer("Game over!")
+    }
+  }
+}
 
 const arrayEquals = (a, b) => {
   return a.every((val, index) => val === b[index])
@@ -263,8 +309,7 @@ const keyboardEvents = (event) => {
       game.shiftDown()
       break
   }
-  game.addNewNumber()
-  game.draw()
+  game.update()
 }
 
 newGame()
