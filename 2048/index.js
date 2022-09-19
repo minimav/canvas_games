@@ -4,16 +4,16 @@ c = canvas.getContext('2d')
 
 const COLOURS = {
   0: 'lightgrey',
-  2: 'red',
-  4: 'red',
-  8: 'red',
-  16: 'red',
-  32: 'red',
-  64: 'red',
-  128: 'red',
-  256: 'red',
-  512: 'red',
-  1024: 'red',
+  2: 'turquoise',
+  4: 'brown',
+  8: 'magenta',
+  16: 'yellow',
+  32: 'cyan',
+  64: 'green',
+  128: 'orange',
+  256: 'lime',
+  512: 'navy',
+  1024: 'pink',
   2048: 'red'
 }
 
@@ -32,9 +32,14 @@ class Game2048 {
     this.rowIndexes = [...Array(this.numRows).keys()]
     this.columnIndexes = [...Array(this.numColumns).keys()]
 
-    this.gameState = []
-    this.rowIndexes.forEach(_ => this.gameState.push(Array(this.numColumns).fill(0)))
+    this.gameState = this.blankGameState()
     this.initialise()
+  }
+
+  blankGameState = () => {
+    let gameState = []
+    this.rowIndexes.forEach(_ => gameState.push(Array(this.numColumns).fill(0)))
+    return gameState
   }
 
   column = (columnIndex) => {
@@ -67,6 +72,7 @@ class Game2048 {
     }
 
     const location = randomChoice(possibleLocations)
+    this.justAdded = location
     this.gameState[location.rowIndex][location.columnIndex] = 2
   }
 
@@ -106,7 +112,99 @@ class Game2048 {
       })
     })
   }
+
+  merge = (arr) => {
+    return arr
+  }
+
+  shiftRight = () => {
+    let gameState = this.blankGameState()
+    this.rowIndexes.forEach(rowIndex => {
+      const row = this.row(rowIndex)
+      let nonZeroValues = row.filter(v => v > 0)
+      if (nonZeroValues.length === 0) { return }
+
+      let numZeros = this.numColumns - nonZeroValues.length
+      gameState[rowIndex] = Array(numZeros).fill(0)
+      gameState[rowIndex].push(...this.merge(nonZeroValues))
+    })
+    this.gameState = gameState
+  }
+
+  shiftLeft = () => {
+    let gameState = this.blankGameState()
+    this.rowIndexes.forEach(rowIndex => {
+      const row = this.row(rowIndex)
+      let nonZeroValues = row.filter(v => v > 0)
+      if (nonZeroValues.length === 0) { return }
+
+      let numZeros = this.numColumns - nonZeroValues.length
+      gameState[rowIndex] = this.merge(nonZeroValues)
+      gameState[rowIndex].push(...Array(numZeros).fill(0))
+    })
+    this.gameState = gameState
+  }
+
+  shiftDown = () => {
+    let gameState = this.blankGameState()
+    this.columnIndexes.forEach(columnIndex => {
+      const column = this.column(columnIndex)
+      let nonZeroValues = column.filter(v => v > 0)
+      if (nonZeroValues.length === 0) { return }
+
+      let numZeros = this.numRows - nonZeroValues.length
+
+      let columnValues = Array(numZeros).fill(0)
+      columnValues.push(...this.merge(nonZeroValues))
+
+      this.rowIndexes.forEach(rowIndex => {
+        gameState[rowIndex][columnIndex] = columnValues[rowIndex]
+      })
+    })
+    this.gameState = gameState
+  }
+
+  shiftUp = () => {
+    let gameState = this.blankGameState()
+    this.columnIndexes.forEach(columnIndex => {
+      const column = this.column(columnIndex)
+      let nonZeroValues = column.filter(v => v > 0)
+      if (nonZeroValues.length === 0) { return }
+
+      let numZeros = this.numRows - nonZeroValues.length
+
+      let columnValues = this.merge(nonZeroValues)
+      columnValues.push(...Array(numZeros).fill(0))
+
+      this.rowIndexes.forEach(rowIndex => {
+        gameState[rowIndex][columnIndex] = columnValues[rowIndex]
+      })
+    })
+    this.gameState = gameState
+  }
+
+
 }
 
 const game = new Game2048({ numRows: 4, numColumns: 4, gap: 10, boxSize: 100 })
 game.draw()
+
+
+window.addEventListener('keydown', (event) => {
+  switch (event.key) {
+    case 'ArrowRight':
+      game.shiftRight()
+      break
+    case 'ArrowLeft':
+      game.shiftLeft()
+      break
+    case 'ArrowUp':
+      game.shiftUp()
+      break
+    case 'ArrowDown':
+      game.shiftDown()
+      break
+  }
+  game.addNewNumber()
+  game.draw()
+})
